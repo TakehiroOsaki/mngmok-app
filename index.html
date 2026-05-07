@@ -1,0 +1,1086 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#ffffff">
+<title>管理者ダッシュボード</title>
+<link rel="manifest" href="manifest.json">
+<style>
+/* ===== リセット・ベース ===== */
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f5f5f3;--surface:#ffffff;--border:#e2e2de;--border-md:#c8c8c4;
+  --text:#1a1a18;--text2:#6b6b68;--text3:#a8a8a5;
+  --blue:#2a7fd4;--blue-bg:#e8f2fc;--blue-text:#1a5fa0;
+  --green:#3a9e6e;--green-bg:#e4f5ee;--green-text:#236b49;
+  --amber:#c47a1a;--amber-bg:#fdf0dc;--amber-text:#8a5210;
+  --red:#c44040;--red-bg:#fce8e8;--red-text:#8a2020;
+  --radius:10px;--radius-sm:6px;
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans','Yu Gothic UI',sans-serif;
+  background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;min-height:100vh}
+
+/* ===== トップバー ===== */
+.topbar{
+  position:sticky;top:0;z-index:100;
+  height:52px;background:var(--surface);
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;padding:0 16px;gap:10px;
+}
+.topbar-title{font-size:15px;font-weight:600;color:var(--text);flex:1}
+.badge{font-size:11px;padding:3px 8px;border-radius:4px;font-weight:500;white-space:nowrap}
+.badge-gray{background:var(--bg);color:var(--text2)}
+.badge-green{background:var(--green-bg);color:var(--green-text)}
+.badge-blue{background:var(--blue-bg);color:var(--blue-text)}
+.btn{
+  font-size:12px;font-weight:500;padding:6px 14px;
+  border-radius:var(--radius-sm);border:1px solid var(--border-md);
+  background:var(--surface);color:var(--text);cursor:pointer;
+  white-space:nowrap;transition:background 0.15s;
+}
+.btn:hover{background:var(--bg)}
+.btn:disabled{opacity:0.5;cursor:default}
+.btn-primary{background:var(--blue);color:#fff;border-color:var(--blue)}
+.btn-primary:hover{background:#1a6ac0;border-color:#1a6ac0}
+.btn-danger{background:var(--red-bg);color:var(--red-text);border-color:#e0b0b0}
+.btn-danger:hover{background:#f8d8d8}
+
+/* ===== ナビ ===== */
+.nav{
+  display:flex;background:var(--surface);
+  border-bottom:1px solid var(--border);
+  padding:0 16px;gap:2px;overflow-x:auto;
+}
+.nav::-webkit-scrollbar{display:none}
+.nav-btn{
+  font-size:13px;font-weight:500;padding:10px 14px;
+  border:none;background:none;cursor:pointer;
+  color:var(--text2);border-bottom:2px solid transparent;
+  white-space:nowrap;transition:color 0.15s;
+}
+.nav-btn.active{color:var(--blue);border-bottom-color:var(--blue)}
+.nav-btn:hover:not(.active){color:var(--text)}
+
+/* ===== コンテンツ共通 ===== */
+.content{padding:16px;max-width:900px;margin:0 auto}
+.screen{display:none}
+.screen.active{display:block}
+
+/* ===== カード ===== */
+.card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius);margin-bottom:14px;overflow:hidden;
+}
+.card-head{
+  padding:11px 16px;border-bottom:1px solid var(--border);
+  font-size:13px;font-weight:600;color:var(--text2);
+  display:flex;align-items:center;gap:8px;
+}
+.pill{
+  font-size:10px;font-weight:500;padding:2px 6px;
+  border-radius:3px;background:var(--blue-bg);color:var(--blue-text);
+}
+
+/* ===== メトリクス ===== */
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;margin-bottom:14px}
+.metric{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px}
+.metric-lbl{font-size:11px;color:var(--text2);margin-bottom:4px}
+.metric-val{font-size:20px;font-weight:700;color:var(--text)}
+.metric-sub{font-size:11px;color:var(--text3);margin-top:2px}
+
+/* ===== フィルターバー ===== */
+.filter-bar{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+.filter-lbl{font-size:13px;color:var(--text2)}
+select{
+  font-size:13px;padding:6px 10px;
+  border:1px solid var(--border-md);border-radius:var(--radius-sm);
+  background:var(--surface);color:var(--text);cursor:pointer;
+}
+.count-lbl{margin-left:auto;font-size:12px;color:var(--text3)}
+
+/* ===== 棒グラフ ===== */
+.bc-wrap{padding:12px 16px;display:flex;flex-direction:column;gap:7px}
+.bc-row{display:flex;align-items:center;gap:10px}
+.bc-lbl{font-size:12px;color:var(--text2);width:90px;text-align:right;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bc-track{flex:1;height:18px;background:var(--bg);border-radius:3px;overflow:hidden}
+.bc-fill{height:100%;border-radius:3px;transition:width 0.5s ease}
+.bc-val{font-size:12px;font-weight:600;color:var(--text);width:90px;text-align:right;flex-shrink:0}
+
+/* ===== テーブル ===== */
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed}
+th{
+  padding:8px 12px;color:var(--text2);font-weight:500;font-size:11px;
+  border-bottom:1px solid var(--border);text-align:right;white-space:nowrap;
+}
+th:first-child,th.left{text-align:left}
+td{
+  padding:9px 12px;border-bottom:1px solid var(--border);
+  color:var(--text);text-align:right;font-size:13px;
+}
+td:first-child{text-align:center;color:var(--text3);font-size:11px;font-weight:600}
+td.left{text-align:left}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--bg)}
+
+/* ===== タグ ===== */
+.tag{display:inline-block;font-size:10px;font-weight:500;padding:1px 5px;border-radius:3px;margin-left:4px;vertical-align:middle;white-space:nowrap}
+.tag1{background:#e4f5ee;color:#236b49}  /* 差込 */
+.tag2{background:#e8f2fc;color:#1a5fa0}  /* 戦略 */
+.tag3{background:#fdf0dc;color:#8a5210}  /* 努力 */
+.tag4{background:#f0efec;color:#5a5a58}  /* 備品 */
+
+/* ===== 達成率カラー ===== */
+.ach-hi{color:var(--green-text);font-weight:600}
+.ach-lo{color:var(--red-text);font-weight:600}
+.ach-mid{color:var(--amber-text);font-weight:600}
+/* ===== ステータスドット ===== */
+.dot{width:7px;height:7px;border-radius:50%;background:var(--border-md);flex-shrink:0;transition:background 0.3s}
+.dot.on{background:var(--green)}
+.dot.wait{background:var(--amber)}
+
+/* ===== データ管理画面 ===== */
+.import-zone{
+  border:2px dashed var(--border-md);border-radius:var(--radius);
+  padding:20px;text-align:center;margin-bottom:16px;
+  background:var(--surface);
+}
+.st-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;margin-bottom:14px}
+.st-row{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);padding:6px 0}
+.st-row:not(:last-child){border-bottom:1px solid var(--border)}
+.st-val{margin-left:auto;font-size:12px;color:var(--text3)}
+.sec-title{font-size:12px;font-weight:600;color:var(--text2);margin:14px 0 8px;letter-spacing:0.3px}
+
+
+/* ===== 担当者別カード ===== */
+.t-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:12px;overflow:hidden}
+.t-head{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--border)}
+.t-name{font-size:14px;font-weight:600;color:var(--text)}
+.t-code{font-size:11px;color:var(--text3)}
+.t-amount{margin-left:auto;font-size:18px;font-weight:700;color:var(--text)}
+.t-metrics{display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid var(--border)}
+.tm{padding:9px 8px;text-align:center}
+.tm:not(:last-child){border-right:1px solid var(--border)}
+.tm-lbl{font-size:10px;color:var(--text2);margin-bottom:3px}
+.tm-val{font-size:15px;font-weight:700;color:var(--text)}
+.prog-wrap{padding:10px 16px}
+.prog-head{display:flex;justify-content:space-between;font-size:11px;color:var(--text2);margin-bottom:4px}
+.prog-track{height:5px;background:var(--bg);border-radius:3px;overflow:hidden}
+.prog-fill{height:100%;border-radius:3px;background:var(--blue)}
+
+/* ===== ログイン画面 ===== */
+.login-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;gap:16px;text-align:center}
+.login-logo{font-size:56px;margin-bottom:4px}
+.login-title{font-size:22px;font-weight:700;color:var(--text)}
+
+/* ===== 空状態 ===== */
+.empty{padding:36px;text-align:center;font-size:13px;color:var(--text3)}
+.spinner{display:inline-block;width:16px;height:16px;border:2px solid var(--border);border-top-color:var(--blue);border-radius:50%;animation:spin 0.7s linear infinite;vertical-align:middle;margin-right:6px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ===== モバイル対応 ===== */
+@media(max-width:600px){
+  .topbar{padding:0 12px}
+  .content{padding:12px}
+  .t-metrics{grid-template-columns:repeat(2,1fr)}
+  .t-metrics .tm:nth-child(2){border-right:none}
+  .t-metrics .tm:nth-child(3){border-top:1px solid var(--border)}
+  .t-metrics .tm:nth-child(4){border-top:1px solid var(--border);border-right:none}
+}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+<!-- ===== ログイン画面 ===== -->
+<div id="login-screen">
+  <div class="login-wrap">
+    <div class="login-logo">📊</div>
+    <div class="login-title">管理者ダッシュボード</div>
+    <button class="btn btn-primary" style="font-size:14px;padding:10px 28px;margin-top:8px" onclick="startAuth()">ログイン</button>
+    <div id="auth-msg" style="font-size:12px;color:var(--text3)"></div>
+  </div>
+</div>
+
+<!-- ===== メインアプリ ===== -->
+<div id="main-app" style="display:none">
+  <div class="topbar">
+    <span class="topbar-title">管理者ダッシュボード</span>
+    <span class="badge badge-gray" id="sync-badge">未同期</span>
+    <button class="btn btn-primary" id="sync-btn" onclick="doSync()">データ同期</button>
+    <button class="btn btn-danger" style="font-size:11px;padding:5px 10px" onclick="doLogout()">ログアウト</button>
+  </div>
+  <div class="nav">
+    <button class="nav-btn active" onclick="goTab('sync',this)">データ管理</button>
+    <button class="nav-btn" onclick="goTab('product',this)">商品別集計</button>
+    <button class="nav-btn" onclick="goTab('client',this)">得意先別集計</button>
+    <button class="nav-btn" onclick="goTab('tantou',this)">担当者別集計</button>
+  </div>
+  <div class="content">
+
+    <!-- データ管理 -->
+    <div class="screen active" id="screen-sync">
+      <div class="import-zone">
+        <button class="btn btn-primary" id="start-btn" onclick="doSync()">同期を開始</button>
+      </div>
+      <div class="st-card">
+        <div class="st-row"><span class="dot" id="d-box"></span>Dropbox接続<span class="st-val" id="st-box">未接続</span></div>
+        <div class="st-row"><span class="dot" id="d-tantou"></span>担当者マスタ（tantou.csv）<span class="st-val" id="st-tantou">未取込</span></div>
+        <div class="st-row"><span class="dot" id="d-master"></span>商品・得意先マスタ<span class="st-val" id="st-master">未取込</span></div>
+        <div class="st-row"><span class="dot" id="d-jsk"></span>販売目標・実績データ<span class="st-val" id="st-jsk">未取込</span></div>
+        <div class="st-row" id="st-err-row" style="display:none"><span class="dot" style="background:var(--red)"></span><span id="st-err" style="color:var(--red-text)"></span></div>
+      </div>
+      <div id="sync-log" style="font-size:12px;color:var(--text3);padding:4px 0 10px;min-height:20px"></div>
+    </div>
+
+    <!-- 商品別集計 -->
+    <div class="screen" id="screen-product">
+      <div class="filter-bar">
+        <span class="filter-lbl">担当者：</span>
+        <select id="sel-p" onchange="renderProduct()"></select>
+        <span class="filter-lbl">商品区分：</span>
+        <select id="sel-pkbn" onchange="renderProduct()">
+          <option value="0">すべて</option>
+          <option value="1">差込商品</option>
+          <option value="2">戦略商品</option>
+          <option value="3">努力目標</option>
+          <option value="4">備品</option>
+        </select>
+        <span class="count-lbl" id="p-count"></span>
+      </div>
+      <div class="metrics" id="p-metrics"></div>
+      <div class="card">
+        <div class="card-head">月別売上実績</div>
+        <div style="padding:16px"><canvas id="p-chart" height="180"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-head">商品別売上ランキング <span class="pill" id="p-bar-note"></span></div>
+        <div class="bc-wrap" id="p-bar"></div>
+      </div>
+      <div class="card">
+        <div class="card-head">明細</div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr>
+              <th style="width:30px">#</th>
+              <th class="left">商品名</th>
+              <th style="width:58px">区分</th>
+              <th style="width:68px">目標数</th>
+              <th style="width:68px">実績数</th>
+              <th style="width:62px">達成率</th>
+              <th style="width:86px">売上金額</th>
+            </tr></thead>
+            <tbody id="p-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- 得意先別集計 -->
+    <div class="screen" id="screen-client">
+      <div class="filter-bar">
+        <span class="filter-lbl">担当者：</span>
+        <select id="sel-c" onchange="renderClient()"></select>
+        <span class="filter-lbl">商品区分：</span>
+        <select id="sel-ckbn" onchange="renderClient()">
+          <option value="0">すべて</option>
+          <option value="1">差込商品</option>
+          <option value="2">戦略商品</option>
+          <option value="3">努力目標</option>
+          <option value="4">備品</option>
+        </select>
+        <span class="count-lbl" id="c-count"></span>
+      </div>
+      <div class="metrics" id="c-metrics"></div>
+      <div class="card">
+        <div class="card-head">月別売上実績</div>
+        <div style="padding:16px"><canvas id="c-chart" height="180"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-head">得意先別売上ランキング <span class="pill" id="c-bar-note"></span></div>
+        <div class="bc-wrap" id="c-bar"></div>
+      </div>
+      <div class="card">
+        <div class="card-head">明細</div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr>
+              <th style="width:30px">#</th>
+              <th class="left">得意先名</th>
+              <th style="width:68px">目標数</th>
+              <th style="width:68px">実績数</th>
+              <th style="width:62px">達成率</th>
+              <th style="width:86px">売上金額</th>
+              <th style="width:58px">構成比</th>
+            </tr></thead>
+            <tbody id="c-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- 担当者別集計 -->
+    <div class="screen" id="screen-tantou">
+      <div class="metrics" id="t-metrics"></div>
+      <div id="t-cards"></div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /main-app -->
+
+<script>
+// ================================================================
+// 設定：Dropboxアプリコンソールで取得した値を設定してください
+// ================================================================
+const APP_KEY = 'b1v1crsli2353t7';          // Dropbox App Console > App key
+const REDIRECT_URI = location.origin + location.pathname; // このHTMLのURL
+
+// ================================================================
+// Dropbox PKCE OAuth 2.0 認証
+// ================================================================
+
+// --- PKCE ヘルパー ---
+function generateCodeVerifier() {
+  const arr = new Uint8Array(64);
+  crypto.getRandomValues(arr);
+  return btoa(String.fromCharCode(...arr))
+    .replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
+}
+
+async function generateCodeChallenge(verifier) {
+  const enc = new TextEncoder().encode(verifier);
+  const hash = await crypto.subtle.digest('SHA-256', enc);
+  return btoa(String.fromCharCode(...new Uint8Array(hash)))
+    .replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
+}
+
+// --- ログイン開始 ---
+async function startAuth() {
+  setMsg('認証ページに移動します...');
+  const verifier = generateCodeVerifier();
+  const challenge = await generateCodeChallenge(verifier);
+  sessionStorage.setItem('pkce_verifier', verifier);
+
+  const url = new URL('https://www.dropbox.com/oauth2/authorize');
+  url.searchParams.set('client_id', APP_KEY);
+  url.searchParams.set('redirect_uri', REDIRECT_URI);
+  url.searchParams.set('response_type', 'code');
+  url.searchParams.set('code_challenge', challenge);
+  url.searchParams.set('code_challenge_method', 'S256');
+  url.searchParams.set('token_access_type', 'offline'); // リフレッシュトークン取得
+  location.href = url.toString();
+}
+
+// --- 認証コールバック処理 ---
+async function handleCallback(code) {
+  setMsg('アクセストークンを取得中...');
+  const verifier = sessionStorage.getItem('pkce_verifier');
+  if (!verifier) { setMsg('認証エラー：再度ログインしてください'); return; }
+
+  const res = await fetch('https://api.dropbox.com/oauth2/token', {
+    method: 'POST',
+    headers: {'Content-Type':'application/x-www-form-urlencoded'},
+    body: new URLSearchParams({
+      code, grant_type: 'authorization_code',
+      client_id: APP_KEY,
+      redirect_uri: REDIRECT_URI,
+      code_verifier: verifier
+    })
+  });
+  const data = await res.json();
+  if (data.access_token) {
+    localStorage.setItem('dbx_access_token', data.access_token);
+    if (data.refresh_token) localStorage.setItem('dbx_refresh_token', data.refresh_token);
+    sessionStorage.removeItem('pkce_verifier');
+    // URLからcodeパラメータを除去
+    history.replaceState({}, '', location.pathname);
+    showApp();
+  } else {
+    setMsg('認証失敗：' + (data.error_description || data.error));
+  }
+}
+
+// --- トークンリフレッシュ ---
+async function refreshToken() {
+  const refresh = localStorage.getItem('dbx_refresh_token');
+  if (!refresh) throw new Error('refresh_token がありません');
+  const res = await fetch('https://api.dropbox.com/oauth2/token', {
+    method: 'POST',
+    headers: {'Content-Type':'application/x-www-form-urlencoded'},
+    body: new URLSearchParams({
+      grant_type: 'refresh_token', refresh_token: refresh, client_id: APP_KEY
+    })
+  });
+  const data = await res.json();
+  if (data.access_token) {
+    localStorage.setItem('dbx_access_token', data.access_token);
+    return data.access_token;
+  }
+  throw new Error('トークンリフレッシュ失敗');
+}
+
+// --- Dropbox APIリクエスト（401時に自動リフレッシュ → 再認証誘導） ---
+async function dbxFetch(url, opts={}, retry=true) {
+  const token = localStorage.getItem('dbx_access_token');
+  const headers = Object.assign({}, opts.headers || {}, {'Authorization': 'Bearer ' + token});
+  const res = await fetch(url, { ...opts, headers });
+  if (res.status === 401 && retry) {
+    console.debug('[dbxFetch] 401 → リフレッシュ試行');
+    try {
+      await refreshToken();
+      return dbxFetch(url, opts, false);
+    } catch(e) {
+      // リフレッシュも失敗 → スコープ不足の可能性が高い
+      throw new Error('認証エラー(401): スコープ不足の可能性があります。ログアウトして再ログインしてください。');
+    }
+  }
+  return res;
+}
+
+function setMsg(t){ document.getElementById('auth-msg').textContent = t }
+
+function doLogout(){
+  // Dropbox関連のキーをすべてクリアして再ログインさせる
+  ['dbx_access_token','dbx_refresh_token'].forEach(k => localStorage.removeItem(k));
+  sessionStorage.clear();
+  location.reload();
+}
+
+function showApp(){
+  document.getElementById('login-screen').style.display='none';
+  document.getElementById('main-app').style.display='block';
+}
+
+// ================================================================
+// Dropbox ファイル操作
+// ================================================================
+
+// バイナリ取得
+async function dbxDownload(path) {
+  // Dropbox-API-Arg はASCII範囲のJSON文字列である必要がある
+  // マルチバイト文字を \uXXXX 形式にエスケープ
+  const arg = JSON.stringify({path}).replace(/[^\x00-\x7F]/g, c =>
+    '\\u' + c.charCodeAt(0).toString(16).padStart(4, '0')
+  );
+  console.debug('[dbxDownload] path:', path, '/ Dropbox-API-Arg:', arg);
+
+  const res = await dbxFetch('https://content.dropboxapi.com/2/files/download', {
+    method: 'POST',
+    headers: {'Dropbox-API-Arg': arg}
+  });
+
+  if (!res.ok) {
+    // 400/409 の場合、Dropboxはエラー詳細をレスポンスボディ（JSON）に返す
+    let detail = '';
+    try {
+      const errText = await res.clone().text();
+      console.debug('[dbxDownload] error body:', errText);
+      const errJson = JSON.parse(errText);
+      detail = errJson?.error_summary || errJson?.error?.path?.['.tag'] || errText.slice(0, 120);
+    } catch(_) {}
+    throw new Error(`${path} [${res.status}]${detail ? ': ' + detail : ''}`);
+  }
+  return res.arrayBuffer();
+}
+
+// フォルダ一覧
+async function dbxListFolder(path) {
+  // ルートは空文字列 "" を渡す（"/" はDropbox APIでは無効）
+  const res = await dbxFetch('https://api.dropboxapi.com/2/files/list_folder', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({path: path, include_non_downloadable_files: false})
+  });
+  const data = await res.json();
+  if (data.error_summary) throw new Error('list_folder失敗: ' + data.error_summary);
+  return data.entries || [];
+}
+
+// Shift-JIS CSV パース
+function parseShiftJISCsv(buffer) {
+  const bytes = new Uint8Array(buffer);
+  const decoder = new TextDecoder('shift-jis', {fatal:false});
+  const text = decoder.decode(bytes);
+  const rows = [];
+  for (const rawLine of text.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line) continue;
+    const cols = [];
+    let inQ = false, cur = '';
+    for (let i = 0; i < line.length; i++) {
+      const c = line[i];
+      if (c === '"') { inQ = !inQ; }
+      else if (c === ',' && !inQ) { cols.push(cur.trim()); cur = ''; }
+      else { cur += c; }
+    }
+    cols.push(cur.trim());
+    rows.push(cols);
+  }
+  return rows;
+}
+
+// ================================================================
+// データストア
+// ================================================================
+let TANTOU = [];   // [{code, name}]
+let SHOHIN = [];   // [{kbn, code, name, tanka}]
+let TOKUI  = [];   // [{code, name}]
+let MOK    = [];   // 販売目標
+let JSK    = [];   // 販売実績
+
+function getShohin(code){ return SHOHIN.find(s=>s.code===code) || {name:code,tanka:0,kbn:0} }
+function getTokuiName(code){ return (TOKUI.find(t=>t.code===code)||{name:code}).name }
+function initials(n){ return n.replace(/[\s　]/g,'').slice(0,2) }
+function fmt(n){ return Math.round(n).toLocaleString('ja-JP') }
+function pct(a,b){ if(!b||b===0) return '-'; const v=Math.round(a/b*1000)/10; return v+'%' }
+function achClass(a,b){ if(!b||b===0) return ''; const r=a/b; return r>=1?'ach-hi':r>=0.8?'ach-mid':'ach-lo' }
+
+const KBN_LABEL={1:'差込',2:'戦略',3:'努力',4:'備品'};
+const KBN_TAG={1:'tag1',2:'tag2',3:'tag3',4:'tag4'};
+const COLORS=['#2a7fd4','#3a9e6e','#c47a1a','#c44040','#7b5ea7','#2a9eb8'];
+
+// ================================================================
+// 同期処理
+// ================================================================
+let synced = false;
+
+function setDot(id, state){
+  const el = document.getElementById(id);
+  el.className = 'dot' + (state==='on' ? ' on' : state==='wait' ? ' wait' : '');
+}
+function setSt(id, t){ document.getElementById(id).textContent = t }
+function addLog(t){ document.getElementById('sync-log').textContent = t }
+
+async function doSync(){
+  if (!localStorage.getItem('dbx_access_token')) return;
+  const btn = document.getElementById('sync-btn');
+  const btn2 = document.getElementById('start-btn');
+  [btn, btn2].forEach(b=>{ if(b){b.disabled=true; b.textContent='同期中...'} });
+  document.getElementById('st-err-row').style.display='none';
+
+  try {
+    // 1. Dropbox接続確認
+    setDot('d-box','wait'); setSt('st-box','接続確認中...');
+    addLog('Dropboxに接続しています...');
+    const meRes = await dbxFetch('https://api.dropboxapi.com/2/users/get_current_account', {method:'POST'});
+    if (!meRes.ok) {
+      const errBody = await meRes.text();
+      throw new Error(`Dropbox接続失敗 [${meRes.status}]: ${errBody.slice(0,120)}`);
+    }
+    const me = await meRes.json();
+    console.debug('[doSync] ログインユーザー:', me.email, '/ account_id:', me.account_id);
+    setDot('d-box','on'); setSt('st-box', me.name?.display_name || '接続済み');
+
+    // 2. tantou.csv（ルート直下）
+    setDot('d-tantou','wait'); setSt('st-tantou','取込中...');
+    addLog('tantou.csv を取込中... (パス: /tantou.csv)');
+    let tantouBuf;
+    try {
+      tantouBuf = await dbxDownload('/tantou.csv');
+    } catch(e) {
+      setDot('d-tantou',''); setSt('st-tantou','エラー');
+      // ファイルが見つからない場合はlist_folderでルートの内容を診断
+      addLog('ルートフォルダの内容を確認中...');
+      try {
+        const rootCheck = await dbxListFolder('');
+        const names = rootCheck.map(e=>e.name).join(', ');
+        console.debug('[doSync] ルートの内容:', names);
+        addLog('ルート内容: ' + (names || '（空）'));
+        throw new Error(`tantou.csv 取込失敗: ${e.message}\nDropboxルートのファイル一覧: ${names || '（空）'}`);
+      } catch(e2) {
+        if (e2.message.includes('tantou.csv')) throw e2;
+        throw new Error(`tantou.csv 取込失敗: ${e.message}\n（ルート確認もエラー: ${e2.message}）`);
+      }
+    }
+    TANTOU = parseShiftJISCsv(tantouBuf)
+      .map(r=>({code:String(r[0]||'').trim().padStart(3,'0'), name:String(r[1]||'').trim()}))
+      .filter(r=>r.code&&r.name&&r.code!=='000');
+    setDot('d-tantou','on'); setSt('st-tantou',`${TANTOU.length}名 取込完了`);
+
+    // 3. 担当者フォルダを列挙（3桁数字フォルダ）
+    addLog('担当者フォルダを検索中...');
+    const rootEntries = await dbxListFolder('');
+    const tantouFolders = rootEntries.filter(e=>
+      e['.tag']==='folder' && /^\d{3}$/.test(e.name)
+    );
+
+    // 4. 各フォルダからマスタ・実績を取込
+    setDot('d-master','wait'); setSt('st-master','取込中...');
+    SHOHIN=[]; TOKUI=[];
+    const shohinSeen=new Set(), tokuiSeen=new Set();
+
+    setDot('d-jsk','wait'); setSt('st-jsk','取込中...');
+    MOK=[]; JSK=[];
+
+    for (const folder of tantouFolders) {
+      const folderName = folder.name;
+      addLog(`/${folderName}/ を処理中...`);
+
+      // shohin.csv
+      try {
+        const buf = await dbxDownload(`/${folderName}/shohin.csv`);
+        for (const r of parseShiftJISCsv(buf)) {
+          const key = (r[0]||'')+'_'+(r[1]||'');
+          if (!shohinSeen.has(key)) {
+            shohinSeen.add(key);
+            SHOHIN.push({kbn:parseInt(r[0])||0, code:String(r[1]||'').trim(), name:String(r[2]||'').trim(), tanka:parseFloat(r[3])||0});
+          }
+        }
+      } catch(e){ console.warn(`${folderName}/shohin.csv:`, e.message) }
+
+      // tokuis.csv
+      try {
+        const buf = await dbxDownload(`/${folderName}/tokuis.csv`);
+        for (const r of parseShiftJISCsv(buf)) {
+          const code = String(r[0]||'').trim().padStart(6,'0');
+          if (!tokuiSeen.has(code)) {
+            tokuiSeen.add(code);
+            TOKUI.push({code, name:String(r[1]||'').trim()});
+          }
+        }
+      } catch(e){ console.warn(`${folderName}/tokuis.csv:`, e.message) }
+
+      // hanmok.csv（販売目標）
+      try {
+        const buf = await dbxDownload(`/${folderName}/hanmok.csv`);
+        for (const r of parseShiftJISCsv(buf)) {
+          MOK.push({
+            tantou: String(r[0]||'').trim().padStart(3,'0'),
+            kbn: parseInt(r[1])||0,
+            shohin: String(r[2]||'').trim(),
+            tokui: String(r[3]||'').trim().padStart(6,'0'),
+            nen: parseInt(r[4])||0,
+            tsuki: parseInt(r[5])||0,
+            mokuhyo: parseInt(r[6])||0
+          });
+        }
+      } catch(e){ console.warn(`${folderName}/hanmok.csv:`, e.message) }
+
+      // hanjsk.csv（販売実績）
+      try {
+        const buf = await dbxDownload(`/${folderName}/hanjsk.csv`);
+        for (const r of parseShiftJISCsv(buf)) {
+          JSK.push({
+            tantou: String(r[0]||'').trim().padStart(3,'0'),
+            kbn: parseInt(r[1])||0,
+            shohin: String(r[2]||'').trim(),
+            tokui: String(r[3]||'').trim().padStart(6,'0'),
+            nen: parseInt(r[4])||0,
+            tsuki: parseInt(r[5])||0,
+            jisseki: parseInt(r[6])||0
+          });
+        }
+      } catch(e){ console.warn(`${folderName}/hanjsk.csv:`, e.message) }
+    }
+
+    setDot('d-master','on'); setSt('st-master',`商品${SHOHIN.length}件 / 得意先${TOKUI.length}件`);
+    setDot('d-jsk','on'); setSt('st-jsk',`目標${MOK.length}件 / 実績${JSK.length}件`);
+    addLog(`同期完了：${tantouFolders.length}フォルダ処理 (${new Date().toLocaleTimeString('ja-JP')})`);
+
+    // 完了
+    synced = true;
+    const badge = document.getElementById('sync-badge');
+    badge.className = 'badge badge-green';
+    badge.textContent = '同期済み';
+    buildSelects();
+
+  } catch(err) {
+    const msg = err.message || String(err);
+    addLog('⚠ エラー: ' + msg);
+    document.getElementById('st-err-row').style.display = '';
+    const errEl = document.getElementById('st-err');
+    errEl.textContent = msg;
+    // 401スコープエラーの場合は再認証ボタンを表示
+    if (msg.includes('401') || msg.includes('スコープ')) {
+      errEl.innerHTML = msg + '<br><button class="btn btn-primary" style="margin-top:8px;font-size:12px" onclick="doLogout()">ログアウトして再認証</button>';
+    }
+    console.error('[doSync] エラー詳細:', err);
+  } finally {
+    [btn, btn2].forEach(b=>{ if(b){b.disabled=false; b.textContent= synced?'再同期':'同期を開始'} });
+  }
+}
+
+
+// ================================================================
+// UI制御
+// ================================================================
+function goTab(id, btn){
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('screen-'+id).classList.add('active');
+  if (id==='product' && synced) renderProduct();
+  if (id==='client'  && synced) renderClient();
+  if (id==='tantou'  && synced) renderTantou();
+}
+
+function buildSelects(){
+  ['sel-p','sel-c'].forEach(id=>{
+    const el = document.getElementById(id);
+    el.innerHTML = '<option value="all">すべて</option>';
+    TANTOU.forEach(t=>{
+      const o = document.createElement('option');
+      o.value=t.code; o.textContent=t.name;
+      el.appendChild(o);
+    });
+  });
+}
+
+// ================================================================
+// 集計ロジック共通
+// ================================================================
+function filterJSK(tantouCode, kbn){
+  return JSK.filter(r=>(tantouCode==='all'||r.tantou===tantouCode)&&(!kbn||r.kbn===kbn));
+}
+function filterMOK(tantouCode, kbn){
+  return MOK.filter(r=>(tantouCode==='all'||r.tantou===tantouCode)&&(!kbn||r.kbn===kbn));
+}
+
+function renderMetrics(id, jsk, mok){
+  const totalJsk = jsk.reduce((s,r)=>s+r.jisseki,0);
+  const totalMok = mok.reduce((s,r)=>s+r.mokuhyo,0);
+  const totalAmt = jsk.reduce((s,r)=>s+r.jisseki*(getShohin(r.shohin).tanka),0);
+  const achVal = pct(totalJsk, totalMok);
+  const achCls = achClass(totalJsk, totalMok);
+  document.getElementById(id).innerHTML=`
+    <div class="metric"><div class="metric-lbl">販売目標数</div><div class="metric-val">${fmt(totalMok)}</div></div>
+    <div class="metric"><div class="metric-lbl">販売実績数</div><div class="metric-val">${fmt(totalJsk)}</div></div>
+    <div class="metric"><div class="metric-lbl">達成率</div><div class="metric-val ${achCls}">${achVal}</div></div>
+    <div class="metric"><div class="metric-lbl">売上金額</div><div class="metric-val" style="font-size:16px">¥${fmt(totalAmt)}</div></div>
+  `;
+}
+
+function renderBar(wrId, noteId, items){
+  const top = items.slice(0,8);
+  const maxAmt = top[0]?.amount || 1;
+  document.getElementById(noteId).textContent = `上位${top.length}件`;
+  document.getElementById(wrId).innerHTML = top.map((item,i)=>`
+    <div class="bc-row">
+      <div class="bc-lbl" title="${item.name}">${item.name}</div>
+      <div class="bc-track"><div class="bc-fill" style="width:${Math.round(item.amount/maxAmt*100)}%;background:${COLORS[i%COLORS.length]}"></div></div>
+      <div class="bc-val">¥${fmt(item.amount)}</div>
+    </div>
+  `).join('');
+}
+
+// ================================================================
+// 商品別集計
+// ================================================================
+function renderProduct(){
+  if (!synced) return;
+  const tantou = document.getElementById('sel-p').value;
+  const kbn = parseInt(document.getElementById('sel-pkbn').value) || 0;
+  const jsk = filterJSK(tantou, kbn);
+  const mok = filterMOK(tantou, kbn);
+  renderMetrics('p-metrics', jsk, mok);
+
+  // 実績・目標どちらにも存在しない商品区分は表示しない
+  // kbn指定時は実績のkbnで厳密に絞り込む（目標のみの別区分商品を除外）
+  const map={};
+  jsk.forEach(r=>{
+    const s=getShohin(r.shohin);
+    // 区分フィルターが指定されている場合、商品マスタのkbnで再確認
+    if(kbn && s.kbn !== kbn) return;
+    const k=r.shohin;
+    if(!map[k]) map[k]={shohin:k,jisseki:0,amount:0,mokuhyo:0};
+    map[k].jisseki+=r.jisseki;
+    map[k].amount+=r.jisseki*s.tanka;
+  });
+  mok.forEach(r=>{
+    const s=getShohin(r.shohin);
+    if(kbn && s.kbn !== kbn) return;
+    if(!map[r.shohin]) return; // 実績がない商品は追加しない
+    map[r.shohin].mokuhyo+=r.mokuhyo;
+  });
+
+  const agg = Object.values(map).map(r=>{const s=getShohin(r.shohin);return{...r,name:s.name||r.shohin,kbn:s.kbn}}).sort((a,b)=>b.amount-a.amount);
+
+  document.getElementById('p-count').textContent = `${agg.length}商品`;
+  renderLineChart('p-chart', jsk);
+  renderBar('p-bar','p-bar-note',agg);
+
+  document.getElementById('p-tbody').innerHTML = agg.map((item,i)=>`
+    <tr>
+      <td>${i+1}</td>
+      <td class="left">${item.name}<span class="tag ${KBN_TAG[item.kbn]||''}">${KBN_LABEL[item.kbn]||''}</span></td>
+      <td>${KBN_LABEL[item.kbn]||''}</td>
+      <td>${fmt(item.mokuhyo)}</td>
+      <td>${fmt(item.jisseki)}</td>
+      <td class="${achClass(item.jisseki,item.mokuhyo)}">${pct(item.jisseki,item.mokuhyo)}</td>
+      <td>¥${fmt(item.amount)}</td>
+    </tr>
+  `).join('');
+}
+
+// ================================================================
+// 得意先別集計
+// ================================================================
+function renderClient(){
+  if (!synced) return;
+  const tantou = document.getElementById('sel-c').value;
+  const kbn = parseInt(document.getElementById('sel-ckbn').value) || 0;
+  const jsk = filterJSK(tantou, kbn);
+  const mok = filterMOK(tantou, kbn);
+  renderMetrics('c-metrics', jsk, mok);
+
+  const totalAmt = jsk.reduce((s,r)=>s+r.jisseki*getShohin(r.shohin).tanka,0);
+  const map={};
+  jsk.forEach(r=>{
+    const k=r.tokui;
+    if(!map[k]) map[k]={tokui:k,jisseki:0,amount:0,mokuhyo:0};
+    map[k].jisseki+=r.jisseki;
+    map[k].amount+=r.jisseki*getShohin(r.shohin).tanka;
+  });
+  mok.forEach(r=>{ if(!map[r.tokui]) map[r.tokui]={tokui:r.tokui,jisseki:0,amount:0,mokuhyo:0}; map[r.tokui].mokuhyo+=r.mokuhyo; });
+
+  const agg = Object.values(map).map(r=>({...r,name:getTokuiName(r.tokui)})).sort((a,b)=>b.amount-a.amount);
+
+  document.getElementById('c-count').textContent = `${agg.length}社`;
+  renderLineChart('c-chart', jsk);
+  renderBar('c-bar','c-bar-note',agg);
+
+  document.getElementById('c-tbody').innerHTML = agg.map((item,i)=>`
+    <tr>
+      <td>${i+1}</td>
+      <td class="left">${item.name}</td>
+      <td>${fmt(item.mokuhyo)}</td>
+      <td>${fmt(item.jisseki)}</td>
+      <td class="${achClass(item.jisseki,item.mokuhyo)}">${pct(item.jisseki,item.mokuhyo)}</td>
+      <td>¥${fmt(item.amount)}</td>
+      <td>${totalAmt>0?Math.round(item.amount/totalAmt*1000)/10:0}%</td>
+    </tr>
+  `).join('');
+}
+
+// ================================================================
+// 担当者別集計
+// ================================================================
+function renderTantou(){
+  if (!synced) return;
+  const totalAmtAll = JSK.reduce((s,r)=>s+r.jisseki*getShohin(r.shohin).tanka,0);
+  const totalMokAll = MOK.reduce((s,r)=>s+r.mokuhyo,0);
+  const totalJskAll = JSK.reduce((s,r)=>s+r.jisseki,0);
+
+  const achAll = achClass(totalJskAll, totalMokAll);
+  document.getElementById('t-metrics').innerHTML=`
+    <div class="metric"><div class="metric-lbl">全担当者 目標数</div><div class="metric-val">${fmt(totalMokAll)}</div></div>
+    <div class="metric"><div class="metric-lbl">全担当者 実績数</div><div class="metric-val">${fmt(totalJskAll)}</div></div>
+    <div class="metric"><div class="metric-lbl">全体達成率</div><div class="metric-val ${achAll}">${pct(totalJskAll,totalMokAll)}</div></div>
+    <div class="metric"><div class="metric-lbl">全体売上金額</div><div class="metric-val" style="font-size:16px">¥${fmt(totalAmtAll)}</div></div>
+  `;
+
+  const agg = TANTOU.map(t=>{
+    const jsk = JSK.filter(r=>r.tantou===t.code);
+    const mok = MOK.filter(r=>r.tantou===t.code);
+    const amount = jsk.reduce((s,r)=>s+r.jisseki*getShohin(r.shohin).tanka,0);
+    const jisseki = jsk.reduce((s,r)=>s+r.jisseki,0);
+    const mokuhyo = mok.reduce((s,r)=>s+r.mokuhyo,0);
+    const clients = new Set(jsk.map(r=>r.tokui)).size;
+    const shohinCnt = new Set(jsk.map(r=>r.shohin)).size;
+    return {...t,amount,jisseki,mokuhyo,clients,shohinCnt};
+  }).sort((a,b)=>b.amount-a.amount);
+
+  document.getElementById('t-cards').innerHTML = agg.map(t=>`
+    <div class="t-card">
+      <div class="t-head">
+        <div class="av">${initials(t.name)}</div>
+        <div><div class="t-name">${t.name}</div><div class="t-code">コード：${t.code}</div></div>
+        <div class="t-amount">¥${fmt(t.amount)}</div>
+      </div>
+      <div class="t-metrics">
+        <div class="tm"><div class="tm-lbl">目標数</div><div class="tm-val">${fmt(t.mokuhyo)}</div></div>
+        <div class="tm"><div class="tm-lbl">実績数</div><div class="tm-val">${fmt(t.jisseki)}</div></div>
+        <div class="tm"><div class="tm-lbl">達成率</div><div class="tm-val ${achClass(t.jisseki,t.mokuhyo)}">${pct(t.jisseki,t.mokuhyo)}</div></div>
+        <div class="tm"><div class="tm-lbl">得意先数</div><div class="tm-val">${t.clients}</div></div>
+      </div>
+      <div class="prog-wrap">
+        <div class="prog-head"><span>売上構成比</span><span>${totalAmtAll>0?Math.round(t.amount/totalAmtAll*1000)/10:0}%</span></div>
+        <div class="prog-track"><div class="prog-fill" style="width:${totalAmtAll>0?Math.round(t.amount/totalAmtAll*100):0}%"></div></div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ================================================================
+// 起動処理
+// ================================================================
+(async function init(){
+  const params = new URLSearchParams(location.search);
+  const code = params.get('code');
+
+  if (code) {
+    // Dropboxからのコールバック
+    history.replaceState({}, '', location.pathname);
+    document.getElementById('login-screen').style.display='flex';
+    document.getElementById('main-app').style.display='none';
+    await handleCallback(code);
+  } else if (localStorage.getItem('dbx_access_token')) {
+    // 既存トークンあり → そのままアプリへ
+    showApp();
+  } else {
+    // 未ログイン → ログイン画面
+    document.getElementById('login-screen').style.display='block';
+  }
+})();
+// ================================================================
+// 月別折れ線グラフ（Canvas 2D / Chart.js不使用・純粋実装）
+// ================================================================
+const chartInstances = {};
+
+function renderLineChart(canvasId, jsk) {
+  // 月別集計
+  const byMonth = {};
+  jsk.forEach(r => {
+    const key = `${r.nen}-${String(r.tsuki).padStart(2,'0')}`;
+    if (!byMonth[key]) byMonth[key] = {nen:r.nen, tsuki:r.tsuki, amount:0};
+    byMonth[key].amount += r.jisseki * getShohin(r.shohin).tanka;
+  });
+
+  // 月を昇順ソート
+  const months = Object.keys(byMonth).sort();
+  const amounts = months.map(k => byMonth[k].amount);
+  const labels = months.map(k => {
+    const [y,m] = k.split('-');
+    return `${y}/${m}`;
+  });
+
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+
+  // 既存インスタンスを破棄
+  if (chartInstances[canvasId]) {
+    chartInstances[canvasId].destroy();
+    chartInstances[canvasId] = null;
+  }
+
+  if (months.length === 0) {
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.fillStyle = '#a8a8a5';
+    ctx.font = '13px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('データがありません', canvas.width/2, canvas.height/2);
+    return;
+  }
+
+  // Chart.jsが読み込まれている場合に使用
+  if (typeof Chart !== 'undefined') {
+    chartInstances[canvasId] = new Chart(canvas, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{
+          label: '売上金額',
+          data: amounts,
+          borderColor: '#2a7fd4',
+          backgroundColor: 'rgba(42,127,212,0.08)',
+          borderWidth: 2,
+          pointRadius: 4,
+          pointBackgroundColor: '#2a7fd4',
+          pointHoverRadius: 6,
+          tension: 0.3,
+          fill: true,
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: ctx => '¥' + Math.round(ctx.parsed.y).toLocaleString('ja-JP')
+            }
+          }
+        },
+        scales: {
+          x: {
+            grid: { color: '#f0f0ee' },
+            ticks: { color: '#6b6b68', font: { size: 11 } }
+          },
+          y: {
+            grid: { color: '#f0f0ee' },
+            ticks: {
+              color: '#6b6b68', font: { size: 11 },
+              callback: v => '¥' + Math.round(v).toLocaleString('ja-JP')
+            },
+            beginAtZero: true
+          }
+        }
+      }
+    });
+  } else {
+    // Chart.js未ロード時はネイティブCanvasでシンプルに描画
+    drawNativeLineChart(canvas, labels, amounts);
+  }
+}
+
+function drawNativeLineChart(canvas, labels, amounts) {
+  const dpr = window.devicePixelRatio || 1;
+  const W = canvas.offsetWidth || 600;
+  const H = 180;
+  canvas.width = W * dpr;
+  canvas.height = H * dpr;
+  canvas.style.width = W + 'px';
+  canvas.style.height = H + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+
+  const pad = {t:16, r:16, b:36, l:70};
+  const cw = W - pad.l - pad.r;
+  const ch = H - pad.t - pad.b;
+  const max = Math.max(...amounts, 1);
+
+  // グリッド・軸
+  ctx.clearRect(0,0,W,H);
+  ctx.strokeStyle = '#f0f0ee';
+  ctx.lineWidth = 1;
+  for (let i=0; i<=4; i++) {
+    const y = pad.t + ch * (1 - i/4);
+    ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(pad.l+cw, y); ctx.stroke();
+    ctx.fillStyle = '#a8a8a5';
+    ctx.font = '10px sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText('¥'+Math.round(max*i/4).toLocaleString(), pad.l-6, y+4);
+  }
+
+  // 折れ線
+  const pts = amounts.map((v,i) => ({
+    x: pad.l + (labels.length===1 ? cw/2 : cw*i/(labels.length-1)),
+    y: pad.t + ch*(1-v/max)
+  }));
+
+  // 塗りつぶし
+  ctx.beginPath();
+  ctx.moveTo(pts[0].x, pad.t+ch);
+  pts.forEach(p => ctx.lineTo(p.x, p.y));
+  ctx.lineTo(pts[pts.length-1].x, pad.t+ch);
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(42,127,212,0.08)';
+  ctx.fill();
+
+  // 線
+  ctx.beginPath();
+  ctx.strokeStyle = '#2a7fd4';
+  ctx.lineWidth = 2;
+  ctx.lineJoin = 'round';
+  pts.forEach((p,i) => i===0 ? ctx.moveTo(p.x,p.y) : ctx.lineTo(p.x,p.y));
+  ctx.stroke();
+
+  // 点・ラベル
+  pts.forEach((p,i) => {
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 4, 0, Math.PI*2);
+    ctx.fillStyle = '#2a7fd4';
+    ctx.fill();
+    ctx.fillStyle = '#6b6b68';
+    ctx.font = '10px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(labels[i], p.x, H-8);
+  });
+}
+
+
+</script>
+</body>
+</html>
