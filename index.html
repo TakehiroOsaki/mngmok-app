@@ -322,6 +322,16 @@ tr:hover td{background:var(--bg)}
 
     <!-- 担当者別集計 -->
     <div class="screen" id="screen-tantou">
+      <div class="filter-bar">
+        <span class="filter-lbl">商品区分：</span>
+        <select id="sel-tkbn" onchange="renderTantou()">
+          <option value="0">すべて</option>
+          <option value="1">差込商品</option>
+          <option value="2">戦略商品</option>
+          <option value="3">努力目標</option>
+          <option value="4">備品</option>
+        </select>
+      </div>
       <div class="metrics" id="t-metrics"></div>
       <div id="t-cards"></div>
     </div>
@@ -858,9 +868,15 @@ function renderClient(){
 // ================================================================
 function renderTantou(){
   if (!synced) return;
-  const totalAmtAll = JSK.reduce((s,r)=>s+r.jisseki*getShohin(r.shohin).tanka,0);
-  const totalMokAll = MOK.reduce((s,r)=>s+r.mokuhyo,0);
-  const totalJskAll = JSK.reduce((s,r)=>s+r.jisseki,0);
+  const kbn = parseInt(document.getElementById('sel-tkbn').value) || 0;
+
+  // 区分フィルターを適用したデータ
+  const jskAll = filterJSK('all', kbn);
+  const mokAll = filterMOK('all', kbn);
+
+  const totalAmtAll = jskAll.reduce((s,r)=>s+r.jisseki*getShohin(r.shohin).tanka,0);
+  const totalMokAll = mokAll.reduce((s,r)=>s+r.mokuhyo,0);
+  const totalJskAll = jskAll.reduce((s,r)=>s+r.jisseki,0);
 
   const achAll = achClass(totalJskAll, totalMokAll);
   document.getElementById('t-metrics').innerHTML=`
@@ -871,14 +887,13 @@ function renderTantou(){
   `;
 
   const agg = TANTOU.map(t=>{
-    const jsk = JSK.filter(r=>r.tantou===t.code);
-    const mok = MOK.filter(r=>r.tantou===t.code);
+    const jsk = filterJSK(t.code, kbn);
+    const mok = filterMOK(t.code, kbn);
     const amount = jsk.reduce((s,r)=>s+r.jisseki*getShohin(r.shohin).tanka,0);
     const jisseki = jsk.reduce((s,r)=>s+r.jisseki,0);
     const mokuhyo = mok.reduce((s,r)=>s+r.mokuhyo,0);
     const clients = new Set(jsk.map(r=>r.tokui)).size;
-    const shohinCnt = new Set(jsk.map(r=>r.shohin)).size;
-    return {...t,amount,jisseki,mokuhyo,clients,shohinCnt};
+    return {...t,amount,jisseki,mokuhyo,clients};
   }).sort((a,b)=>b.amount-a.amount);
 
   document.getElementById('t-cards').innerHTML = agg.map(t=>`
